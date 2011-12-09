@@ -1,29 +1,39 @@
-"""
-The #django-dev ticket bot.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""Very heavily inspired by Idan Gazit's ticket bot
+
+Original ticket bot can be found here: 
+https://github.com/idangazit/django-ticketbot
+
+Use together with a settings.py file containing:
+
+TICKET_URL = "https://path/to/ticket/%s"
+CHANGESET_URL = "https://path/to/changeset/%s"
+NICKNAME = "ticketbot"
+PASSWORD = "some_secret_pass"
+CHANNELS = "#django-dev,#other-channel"
+HELP = "Hello, I'm a robot"
+
+A template file (settings.py.inc) is provided for convenience
+
 """
 
+import sys
+import re
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.python import log
+from settings import (TICKET_URL, CHANGESET_URL, NICKNAME, PASSWORD, CHANNELS,
+                      HELP)
 
-import os
-import sys
-import re
 
-ticket_re = re.compile(r'(?<!build)(?:^|\s)#(\d+)')
-ticket_url = "https://code.djangoproject.com/ticket/%s"
-
-changeset_re = re.compile(r'(?:^|\s)r(\d+)')
-changeset_re2 = re.compile(r'(?:^|\s)\[(\d+)\]')
-changeset_url = "https://code.djangoproject.com/changeset/%s"
+TICKET_RE = re.compile(r'#(\d+)')
+CHANGESET_RE = re.compile(r'(?:^|\s)\[(\w+)\]')
 
 
 class TicketBot(irc.IRCClient):
-    """A bot for URLifying Django tickets."""
-
-    nickname = "ticketbot"
-    password = os.environ['NICKSERV_PASS']
-    channels = os.environ['CHANNELS'].split(',')
+    """A bot for URLifying tickets."""
 
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
@@ -33,17 +43,17 @@ class TicketBot(irc.IRCClient):
 
     def signedOn(self):
         """Called when bot has succesfully signed on to server."""
-        self.setNick(self.nickname)
-        self.msg('NickServ', 'identify %s' % (self.password))
-        for channel in self.channels:
+        self.setNick(NICKNAME)
+        if PASSWORD:
+            self.msg('NickServ', 'identify %s' % (PASSWORD))
+        for channel in CHANNELS.split(','):
             self.join(channel)
 
     def privmsg(self, user, channel, msg):
         """This will get called when the bot receives a message."""
         user = user.split('!', 1)[0]
-        tickets = ticket_re.findall(msg)
-        changesets = changeset_re.findall(msg)
-        changesets.extend(changeset_re2.findall(msg))
+        tickets = TICKET_RE.findall(msg)
+        changesets = CHANGESET_RE.findall(msg)
 
         # Check to see if they're sending me a private message
         if channel == self.nickname:
@@ -52,16 +62,16 @@ class TicketBot(irc.IRCClient):
             target = channel
 
         if msg.startswith(self.nickname) and not tickets and not changesets:
-            self.msg(user, "Hi, I'm Django's ticketbot. I know how to linkify tickets like \"#12345\", and changesets like \"r12345\" or \"[12345]\".")
+            self.msg(user, HELP)
             return
 
         blacklist = range(0, 11)
         for ticket in set(tickets):
             if int(ticket) in blacklist:
                 continue
-            self.msg(target, ticket_url % ticket)
+            self.msg(target, TICKET_URL % ticket)
         for changeset in set(changesets):
-            self.msg(target, changeset_url % changeset)
+            self.msg(target, CHANGESET_URL % changeset)
         return
 
 
