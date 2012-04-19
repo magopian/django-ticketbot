@@ -1,0 +1,4 @@
+# one line per regexp to ignore in nicks
+
+# bots
+.*bot

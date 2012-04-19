@@ -3,7 +3,7 @@
 
 """Very heavily inspired by Idan Gazit's ticket bot
 
-Original ticket bot can be found here: 
+Original ticket bot can be found here:
 https://github.com/idangazit/django-ticketbot
 
 Use together with a settings.py file containing:
@@ -25,11 +25,21 @@ from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.python import log
 from settings import (TICKET_URL, CHANGESET_URL, NICKNAME, PASSWORD, CHANNELS,
-                      HELP)
+                      HELP, IGNORE_NICKS_FILE, IGNORE_MSGS_FILE)
 
 
 TICKET_RE = re.compile(r'#(\d+)')
 CHANGESET_RE = re.compile(r'(?:^|\s)\[(\w+)\]')
+
+
+def load_ignores(filename):
+    with open(filename, 'r') as f:
+        return [re.compile(l.strip()) for l in f.readlines()
+                                      if l.strip() and not l.startswith('#')]
+
+
+IGNORE_NICKS = load_ignores(IGNORE_NICKS_FILE)
+IGNORE_MSGS = load_ignores(IGNORE_MSGS_FILE)
 
 
 class TicketBot(irc.IRCClient):
@@ -61,14 +71,17 @@ class TicketBot(irc.IRCClient):
         else:
             target = channel
 
+        if any([nick_ignore.search(user) for nick_ignore in IGNORE_NICKS]):
+            return
+
+        if any([msg_ignore.search(msg) for msg_ignore in IGNORE_MSGS]):
+            return
+
         if msg.startswith(self.nickname) and not tickets and not changesets:
             self.msg(user, HELP)
             return
 
-        blacklist = range(0, 11)
         for ticket in set(tickets):
-            if int(ticket) in blacklist:
-                continue
             self.msg(target, TICKET_URL % ticket)
         for changeset in set(changesets):
             self.msg(target, CHANGESET_URL % changeset)

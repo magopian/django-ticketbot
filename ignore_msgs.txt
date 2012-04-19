@@ -1,0 +1,1 @@
+# one line per regexp to ignore in messages

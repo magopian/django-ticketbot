@@ -9,3 +9,5 @@ NICKNAME = "ticketbot"
 PASSWORD = "" # nickserv pass, optional
 CHANNELS = "#django-dev,#other-channel" # comma separated list of channels
 HELP = """Hi, I'm a ticketbot. I know how to linkify tickets like \"#12345\", and changesets like \"r12345\" or \"[12345]\"."""
+IGNORE_NICKS_FILE = "ignore_nicks.txt"
+IGNORE_MSGS_FILE = "ignore_messages.txt"
